@@ -160,6 +160,9 @@ body{min-height:100vh;background:#F5F6F8;font-family:-apple-system,BlinkMacSyste
     <button class="hdr-btn" onclick="openQR()" title="分享二维码">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/></svg>
     </button>
+    <button class="hdr-btn" id="adminBtn" onclick="toggleAdmin()" title="管理员" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </button>
     <button class="hdr-btn" onclick="openSettings()" title="设置">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -674,14 +677,8 @@ async function saveSettings() {
   if (initGitHub()) {
     toast('保存成功！');
     closeSettings();
-    // Check admin mode
-    if (adminPwd) {
-      isAdmin = true;
-      document.body.classList.add('admin-mode');
-    } else {
-      isAdmin = false;
-      document.body.classList.remove('admin-mode');
-    }
+    // Show admin button if password is set (user must click to enter admin mode)
+    checkAdmin();
     // Load photos
     const g = document.getElementById('grid');
     g.innerHTML = '<div class="loading">加载中...</div>';
@@ -696,12 +693,39 @@ async function saveSettings() {
 /* ═══ Admin Auth ═══ */
 function checkAdmin() {
   const cfg = getConfig();
+  // Show admin button if admin password is configured
   if (cfg.adminPwd) {
+    document.getElementById('adminBtn').style.display = 'flex';
+  } else {
+    document.getElementById('adminBtn').style.display = 'none';
+  }
+}
+
+function toggleAdmin() {
+  const cfg = getConfig();
+  if (!cfg.adminPwd) return;
+  
+  if (isAdmin) {
+    // Exit admin mode
     isAdmin = false;
     document.body.classList.remove('admin-mode');
-  } else {
+    document.getElementById('adminBtn').style.color = '#555';
+    toast('已退出管理员模式');
+    renderPhotos();
+    return;
+  }
+  
+  // Enter admin mode - prompt for password
+  const pwd = prompt('请输入管理员密码：');
+  if (pwd === null) return; // cancelled
+  if (pwd === cfg.adminPwd) {
     isAdmin = true;
     document.body.classList.add('admin-mode');
+    document.getElementById('adminBtn').style.color = '#FF6B81';
+    toast('管理员模式已开启');
+    renderPhotos();
+  } else {
+    toast('密码错误');
   }
 }
 
