@@ -361,8 +361,8 @@ async function uploadToGitHub(file, filename) {
   }
   
   const data = await res.json();
-  // Use raw.githubusercontent.com for direct image access
-  return `https://raw.githubusercontent.com/${ghConfig.owner}/${ghConfig.repo}/main/images/${filename}`;
+  // Use jsdelivr CDN for image access (works in China)
+  return `https://cdn.jsdelivr.net/gh/${ghConfig.owner}/${ghConfig.repo}@main/images/${filename}`;
 }
 
 /* ═══ Load Photos ═══ */
