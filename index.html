@@ -326,19 +326,43 @@ async function updatePhotosJSON(photos) {
   return putRes.ok;
 }
 
-/* ═══ SM.MS Upload ═══ */
-async function uploadToSMMS(file) {
-  const formData = new FormData();
-  formData.append('smfile', file);
-  const res = await fetch('https://sm.ms/api/v2/upload', {
-    method: 'POST',
-    body: formData
+/* ═══ GitHub Image Upload ═══ */
+async function uploadToGitHub(file, filename) {
+  const url = `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/images/${filename}`;
+  
+  // Read file as base64
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64Str = dataUrl.split(',')[1];
+      resolve(base64Str);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
-  const data = await res.json();
-  if (data.success) {
-    return data.data.url;
+  
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${ghConfig.token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: `Add image ${filename}`,
+      content: base64,
+      branch: 'main'
+    })
+  });
+  
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `上传失败 (${res.status})`);
   }
-  throw new Error(data.message || '上传失败');
+  
+  const data = await res.json();
+  // Use raw.githubusercontent.com for direct image access
+  return `https://raw.githubusercontent.com/${ghConfig.owner}/${ghConfig.repo}/main/images/${filename}`;
 }
 
 /* ═══ Load Photos ═══ */
@@ -555,8 +579,10 @@ async function submitPhoto() {
   try {
     // Convert data URL to blob
     const blob = await dataURLtoBlob(pendingImage);
-    // Upload to SM.MS
-    const imageUrl = await uploadToSMMS(blob);
+    // Upload to GitHub
+    const ext = pendingImage.split(';')[0].split('/')[1] || 'jpg';
+    const filename = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}.${ext}`;
+    const imageUrl = await uploadToGitHub(blob, filename);
     
     // Create photo object
     const newPhoto = {
